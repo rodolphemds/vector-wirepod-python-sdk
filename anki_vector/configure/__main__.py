@@ -44,7 +44,14 @@ except:  # pylint: disable=bare-except
         return text
 
 import anki_vector
+
+# ===== CONFIGURATION =====
 ROBOT_GUID = "/CCGr3+bq5xHebeNW9oOTQ=="
+ROBOT_SERIAL = "0030263b"
+ROBOT_NAME = "Vector-W2B1"
+ROBOT_IP = "172.20.10.2"
+WIREPOD_IP = "172.20.10.3:8080"
+# ===== END CONFIGURATION =====
 
 
 class ApiHandler:
@@ -87,8 +94,7 @@ def get_serial(serial=None):
     if not serial:
         serial = os.environ.get('ANKI_ROBOT_SERIAL')
         if not serial:
-            print("\n\nPlease find your robot serial number (ex. 00e20100) located on the underside of Vector, or accessible from Vector's debug screen.")
-            serial = input('Enter robot serial number: ')
+            serial = ROBOT_SERIAL
         else:
             print("Found robot serial number in environment variable '{}'".format(colored("ANKI_ROBOT_SERIAL", "green")))
     serial = serial.lower()
@@ -97,12 +103,9 @@ def get_serial(serial=None):
 
 
 def get_cert(serial=None):
-    print("\n\nEnter the IP address and webserver port of your wire-pod instance (ex. 192.168.1.50:8080) (:8080 is the default port)\nLeave this blank and press enter if you want this script to attempt to automatically connect to your wire-pod instance via escapepod.local.")
-    podip = input("Enter wire-pod ip: ")
-    if podip == "":
-        podip = "escapepod.local:8080"
+    podip = WIREPOD_IP
     serial = get_serial(serial)
-    print("\nDownloading Vector certificate from wire-pod...", end="")
+    print("\nDownloading Vector certificate from wire-pod at {}...".format(colored(podip, "cyan")), end="")
     sys.stdout.flush()
     r = requests.get('http://{}/session-certs/{}'.format(podip, serial))
     if r.status_code != 200:
@@ -150,8 +153,7 @@ def get_name_and_ip(robot_name=None, ip=None):
     if not robot_name:
         robot_name = os.environ.get('VECTOR_ROBOT_NAME')
         if not robot_name:
-            print("\n\nFind your robot name (ex. Vector-A1B2) by placing Vector on the charger and double-clicking Vector's backpack button.")
-            robot_name = input("Enter robot name: ")
+            robot_name = ROBOT_NAME
         else:
             print("Found robot name in environment variable '{}'".format(colored("VECTOR_ROBOT_NAME", "green")))
     robot_name = standardize_name(robot_name)
@@ -159,9 +161,7 @@ def get_name_and_ip(robot_name=None, ip=None):
     if not ip:
         ip = os.environ.get('ANKI_ROBOT_HOST')
         if not ip:
-            print("\n\nFind your robot ip address (ex. 192.168.42.42) by placing Vector on the charger, double-clicking Vector's backpack button,\n"
-                  "then raising and lowering his arms. If you see {} on his face, reconnect Vector to your WiFi using the Vector Companion App.".format(colored("XX.XX.XX.XX", "red")))
-            ip = input("Enter robot ip: ")
+            ip = ROBOT_IP
         else:
             print("Found robot ip address in environment variable '{}'".format(colored("ANKI_ROBOT_HOST", "green")))
     print("Using IP: {}".format(colored(ip, "cyan")))
@@ -261,11 +261,6 @@ def main(api):
         sys.exit()
 
     print(__doc__)
-
-    valid = ["y", "Y", "yes", "YES"]
-    environ = input("Do you wish to proceed? (y/n) ")
-    if environ not in valid:
-        sys.exit("Stopping...")
 
     name, ip = get_name_and_ip(args.name, args.ip)
     cert, serial = get_cert(args.serial)
