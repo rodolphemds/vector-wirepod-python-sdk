@@ -32,12 +32,10 @@ import os
 from pathlib import Path
 import platform
 import re
-import socket
 import sys
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-import grpc
 import requests
 try:
     from termcolor import colored  # pylint: disable=import-error
@@ -46,7 +44,7 @@ except:  # pylint: disable=bare-except
         return text
 
 import anki_vector
-from anki_vector import messaging
+ROBOT_GUID = "/CCGr3+bq5xHebeNW9oOTQ=="
 
 
 class ApiHandler:
@@ -113,43 +111,6 @@ def get_cert(serial=None):
     print(colored(" DONE", "green"))
     cert = r.content
     return cert, serial
-
-
-def user_authentication(session_id: bytes, cert: bytes, ip: str, name: str) -> str:
-    # Pin the robot certificate for opening the channel
-    creds = grpc.ssl_channel_credentials(root_certificates=cert)
-
-    print("Attempting to download guid from {} at {}:443...".format(colored(name, "cyan"), colored(ip, "cyan")), end="")
-    sys.stdout.flush()
-    channel = grpc.secure_channel("{}:443".format(ip), creds,
-                                  options=(("grpc.ssl_target_name_override", name,),))
-
-    # Verify the connection to Vector is able to be established (client-side)
-    try:
-        # Explicitly grab _channel._channel to test the underlying grpc channel directly
-        grpc.channel_ready_future(channel).result(timeout=15)
-    except grpc.FutureTimeoutError:
-        print(colored(" ERROR", "red"))
-        sys.exit("\nUnable to connect to Vector\n"
-                 "Please be sure to connect via the Vector companion app first, and connect your computer to the same network as your Vector.")
-
-    try:
-        interface = messaging.client.ExternalInterfaceStub(channel)
-        request = messaging.protocol.UserAuthenticationRequest(
-            user_session_id=session_id.encode('utf-8'),
-            client_name=socket.gethostname().encode('utf-8'))
-        response = interface.UserAuthentication(request)
-        if response.code != messaging.protocol.UserAuthenticationResponse.AUTHORIZED:  # pylint: disable=no-member
-            print(colored(" ERROR", "red"))
-            sys.exit("\nFailed to authorize request:\n"
-                     "Please be sure to first set up Vector using the companion app.")
-    except grpc.RpcError as e:
-        print(colored(" ERROR", "red"))
-        sys.exit("\nFailed to authorize request:\n"
-                 "An unknown error occurred '{}'".format(e))
-
-    print(colored(" DONE\n", "green"))
-    return response.client_token_guid
 
 
 def get_session_token(api, username=None):
@@ -318,9 +279,7 @@ def main(api):
     # token = get_session_token(api, args.email)
     # if not token.get("session"):
     #     sys.exit("Session error: {}".format(token))
-    token = "2vMhFgktH3Jrbemm2WHkfGN"
-
-    guid = user_authentication(token, cert, ip, name)
+    guid = ROBOT_GUID.encode("utf-8")
 
     # Store credentials in the .anki_vector directory's sdk_config.ini file
     write_config(serial, cert_file, ip, name, guid)
